@@ -1,0 +1,25 @@
+[project]
+name = "systems-final-project"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Shobhith-V", email = "shobhith.v@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dataretrieval>=1.4.0",
+    "duckdb>=2.0.0",
+    "matplotlib>=3.11.2",
+    "openmeteo-requests>=1.7.5",
+    "pandas>=3.1.0",
+    "pyarrow>=26.0.1",
+    "requests>=2.34.2",
+    "scikit-learn>=1.9.1",
+]
+
+[project.scripts]
+systems-final-project = "systems_final_project:main"
+
+[build-system]
+requires = ["uv_build>=0.11.7,<0.12.0"]
+build-backend = "uv_build"
