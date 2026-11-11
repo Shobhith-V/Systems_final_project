@@ -1,17 +1,3 @@
-"""Download hourly rainfall from Open-Meteo for the 4 rain locations.
-
-1. Observed rain  (Historical Weather / ERA5 archive): 2015-10-01 -> ~6 days ago
-   Output: data/raw/rain_observed/<location>.parquet   columns: time, precip_mm
-2. Archived forecast rain (Previous Runs API): forecast issued ~24 h before
-   each hour. Only available from ~2024.
-   Output: data/raw/rain_forecast/<location>.parquet   columns: time, precip_fcst_24h_mm
-
-Usage:
-    uv run python -m systems_final_project.data.download_rain
-    uv run python -m systems_final_project.data.download_rain --skip-forecast
-
-Open-Meteo is free for non-commercial use with attribution (credit it in the report).
-"""
 
 import argparse
 import time
@@ -20,10 +6,7 @@ from datetime import date
 import pandas as pd
 import requests
 
-from .config import (
-    RAIN_DIR, RAIN_END_DATE, RAIN_FCST_DIR, RAIN_FCST_START_DATE,
-    RAIN_LOCATIONS, START_DATE,
-)
+from .config import (RAIN_DIR, RAIN_END_DATE, RAIN_FCST_DIR, RAIN_FCST_START_DATE,RAIN_LOCATIONS, START_DATE,)
 
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 PREV_RUNS_URL = "https://previous-runs-api.open-meteo.com/v1/forecast"

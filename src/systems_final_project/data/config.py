@@ -1,5 +1,3 @@
-"""Shared config for data downloads: gauges, rain locations, date ranges, paths."""
-
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -10,19 +8,16 @@ USGS_DIR = RAW_DIR / "usgs"
 RAIN_DIR = RAW_DIR / "rain_observed"
 RAIN_FCST_DIR = RAW_DIR / "rain_forecast"
 
-# ---------------------------------------------------------------------------
-# USGS gauges. Parameter 00065 = gage height (ft).
-# Verify these IDs: download_usgs.py prints each site's official name first.
-# ---------------------------------------------------------------------------
+
 GAUGES = {
-    "point":       "03085152",  # Monongahela R at Point State Park (TARGET)
-    "braddock":    "03085000",  # Monongahela R at Braddock
-    "elizabeth":   "03075070",  # Monongahela R at Elizabeth
-    "sutersville": "03083500",  # Youghiogheny R at Sutersville
-    "natrona":     "03049500",  # Allegheny R at Natrona
-    "kittanning":  "03036500",  # Allegheny R at Kittanning
+    "point":       "03085152",  # Monongahela River at Point State Park (TARGET)
+    "braddock":    "03085000",  # Monongahela River at Braddock
+    "elizabeth":   "03075070",  # Monongahela River at Elizabeth
+    "sutersville": "03083500",  # Youghiogheny River at Sutersville
+    "natrona":     "03049500",  # Allegheny River at Natrona
+    "kittanning":  "03036500",  # Allegheny River at Kittanning
 }
-PARAMETER_CODE = "00065"
+PARAMETER_CODE = "00065" # this is the parameter code for gauge height, feet
 
 # Water years run Oct 1 -> Sep 30. WY2016 = 2015-10-01 .. 2016-09-30.
 START_DATE = date(2015, 10, 1)

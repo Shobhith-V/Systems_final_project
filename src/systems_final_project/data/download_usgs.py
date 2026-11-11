@@ -1,21 +1,3 @@
-"""Download 15-minute gage height for all gauges from the USGS Water Data API.
-
-Uses the new OGC API (api.waterdata.usgs.gov). The legacy waterservices.usgs.gov
-endpoint is throttled from Nov 2026 and shut down Feb 2027.
-
-Output: data/raw/usgs/<gauge>/WY<year>.parquet  (one file per gauge per water year)
-Columns: time (UTC), value (ft), approval_status, qualifier
-
-Usage:
-    uv run python -m systems_final_project.data.download_usgs
-    uv run python -m systems_final_project.data.download_usgs --gauges point braddock
-    uv run python -m systems_final_project.data.download_usgs --overwrite
-
-API key: without one you get 50 requests/hour, which is NOT enough for the full
-history (each water year ~35k rows = 4 pages). Get a free key at
-https://api.waterdata.usgs.gov/signup and set:  export USGS_API_KEY=...
-"""
-
 import argparse
 import os
 import sys
