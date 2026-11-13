@@ -1,6 +1,13 @@
 .venv/
 __pycache__/
-
-.env
 .ipynb_checkpoints/
+.env
 .streamlit/secrets.toml
+
+# macOS Finder metadata
+.DS_Store
+
+# Generated model inputs (rebuild with: uv run python -m systems_final_project.features)
+data/features/
+
+# results/ is tracked on purpose: figures/*.png and predictions/*.parquet are the project outputs
