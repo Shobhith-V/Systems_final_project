@@ -38,3 +38,12 @@ RAIN_END_DATE = date.today() - timedelta(days=6)
 
 # Archived forecasts (Previous Runs API) only exist from ~2024 for most models.
 RAIN_FCST_START_DATE = date(2024, 1, 1)
+
+# ---------------------------------------------------------------------------
+# Modelling inputs and outputs (features.py, models.py, evaluation.py)
+# ---------------------------------------------------------------------------
+CLEAN_HOURLY = REPO_ROOT / "data" / "clean" / "hourly.parquet"  # from data_preprocessing.ipynb
+FEATURES_DIR = REPO_ROOT / "data" / "features"                  # features.parquet, feature_groups.json
+RESULTS_DIR = REPO_ROOT / "results"
+PREDICTIONS_DIR = RESULTS_DIR / "predictions"                   # <model>.parquet held-out forecasts
+FIGURES_DIR = RESULTS_DIR / "figures"                           # fig1_accuracy, fig2_april_2024
