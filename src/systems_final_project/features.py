@@ -7,14 +7,19 @@ Feature groups (listed in feature_groups.json):
   point      Point's own level now, 6 h and 24 h ago, recent change, 24 h max
   upstream   Natrona, Kittanning, Sutersville: level now / 6 h / 12 h ago + changes;
              Braddock: changes only (Dam 3 removal shifted its level, Jul 2024)
+  upstream_eliz  Elizabeth: changes only (same Dam 3 reason; offline since Jun 2026).
+             Ablation only -- not in the main models.
   rain_obs   observed rain totals over the past 6/24/48/72 h, per location + basin mean
   season     day-of-year sin/cos
-  flags      post_dam3, short-gap fill flags
+  flags      short-gap fill flags
+  info       post_dam3 -- kept for analysis, NOT a model input: no high water has
+             occurred since Jul 2024 at any gauge (incl. Allegheny gauges the dam
+             cannot affect), so the flag would teach the model "post-dam = low water"
 
 Targets per horizon h:
   y_{h}h     Point level at t+h (ft)
   dy_{h}h    y_{h}h - point(t)   (what the models are trained to predict)
-Plus water_year (of the issue time t), the leave-one-year-out split key.
+Plus water_year (of the issue time t), the train/test split key.
 
 Usage (from the repository root):
     uv run python -m systems_final_project.features [--flood-ft 18]
@@ -36,12 +41,12 @@ import pandas as pd
 from systems_final_project.data.config import CLEAN_HOURLY, FEATURES_DIR
 
 HORIZONS = (6, 12, 24)
-FLOOD_FT = 18.0  # NWS action stage for the Ohio River at Pittsburgh
+FLOOD_FT = 18.0  # NWS action stage, Ohio River at Pittsburgh (flood stage: 22 ft since Oct 2024)
 RAIN_LOCS = ("pittsburgh", "kittanning", "elizabeth", "sutersville")
 RAIN_WINDOWS = (6, 24, 48, 72)
 LEVEL_GAUGES = ("natrona", "kittanning", "sutersville")  # stable datum: use levels
 DELTA_GAUGES = ("braddock",)                             # Dam 3 shifted datum: changes only
-GROUPS = ("point", "upstream", "rain_obs", "season", "flags")
+GROUPS = ("point", "upstream", "upstream_eliz", "rain_obs", "season", "flags", "info")
 
 
 def load_features(features_dir: Path = FEATURES_DIR) -> tuple[pd.DataFrame, dict]:
@@ -95,6 +100,9 @@ def build(df: pd.DataFrame, flood_ft: float) -> tuple[pd.DataFrame, dict]:
         add("upstream", f"{g}_d1", s - s.shift(1))
         add("upstream", f"{g}_d6", s - s.shift(6))
         add("upstream", f"{g}_d12", s - s.shift(12))
+    e = df["elizabeth"]
+    for k in (1, 6, 12):
+        add("upstream_eliz", f"elizabeth_d{k}", e - e.shift(k))
 
     # --- observed rain (past only) ----------------------------------------------
     for loc in (*RAIN_LOCS, "basin_mean"):
@@ -106,7 +114,7 @@ def build(df: pd.DataFrame, flood_ft: float) -> tuple[pd.DataFrame, dict]:
     doy = df.index.day_of_year.to_numpy()
     add("season", "doy_sin", np.sin(2 * np.pi * doy / 365.25))
     add("season", "doy_cos", np.cos(2 * np.pi * doy / 365.25))
-    add("flags", "post_dam3", df["post_dam3"].astype(int))
+    add("info", "post_dam3", df["post_dam3"].astype(int))
     for g in ("point", "braddock", "natrona", "kittanning", "sutersville"):
         add("flags", f"{g}_filled", df[f"{g}_filled"].astype(int))
 
@@ -144,7 +152,7 @@ def main() -> None:
     feats.to_parquet(args.out_dir / "features.parquet")
     (args.out_dir / "feature_groups.json").write_text(json.dumps(meta, indent=2))
 
-    n_feat = sum(len(v) for v in meta["feature_groups"].values())
+    n_feat = sum(len(v) for k, v in meta["feature_groups"].items() if k != "info")
     print(f"rows: {len(feats):,}   features: {n_feat}   targets: {len(meta['targets'])}")
     for g, cols in meta["feature_groups"].items():
         miss = feats[cols].isna().mean().mean() * 100
