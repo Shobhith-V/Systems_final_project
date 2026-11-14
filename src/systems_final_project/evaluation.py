@@ -2,7 +2,8 @@
 
 Reads data/features/ and the leave-one-year-out predictions in results/predictions/
 (run models.py first) and writes results/figures/:
-  fig1_accuracy.png     error, alarm skill and early warning by horizon (2016-2027, 40 events)
+  fig1_accuracy.png     error, alarm skill, early warning and physical consistency by horizon
+                        (2016-2027, 40 events)
   fig2_april_2024.png   forecasts vs observed during the April 2024 floods (held-out year)
 
 Scoring (per horizon 6/12/24 h, all models on the same hours, see eval_rows):
@@ -26,8 +27,9 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
 from systems_final_project import models  # noqa: E402
-from systems_final_project.data.config import FIGURES_DIR  # noqa: E402
-from systems_final_project.features import load_features  # noqa: E402
+from systems_final_project.data.config import CLEAN_HOURLY, FIGURES_DIR  # noqa: E402
+from systems_final_project.features import load_features, load_hourly  # noqa: E402
+from systems_final_project.physics import ROUTED_GAUGES, RoutingModel, routing_design  # noqa: E402
 
 
 # ------------------------------------------------------------------------------ scoring
@@ -99,10 +101,10 @@ def evaluate(f: pd.DataFrame, preds: dict[int, pd.Series], threshold: float, mod
 
 
 # ------------------------------------------------------------------------------ figures
-NAMES = ["persistence", "gbm_A", "gbm_AE"]
-LABEL = {"persistence": "Persistence (baseline)", "gbm_A": "GBM A (deployable)",
-         "gbm_AE": "GBM AE (+Elizabeth)"}
-COLOR = {"persistence": "#a3a29c", "gbm_A": "#2a78d6", "gbm_AE": "#1baf7a"}
+NAMES = ["persistence", "gbm_A", "gbm_AR_mono"]
+LABEL = {"persistence": "Persistence (baseline)", "gbm_A": "GBM A",
+         "gbm_AR_mono": "GBM AR_mono (physics-informed)"}
+COLOR = {"persistence": "#a3a29c", "gbm_A": "#2a78d6", "gbm_AR_mono": "#eb6834"}
 INK, INK2, MUTED = "#0b0b0b", "#52514e", "#8a8984"
 
 plt.rcParams.update({
@@ -133,15 +135,17 @@ def save(fig, name):
 
 # ------------------------------------------------------------------------------ fig 1
 def fig_accuracy(summary, horizons, thr):
-    """Six metrics per horizon for every model, from evaluate()."""
+    """Seven metrics per horizon for every model, from evaluate() and consistency()."""
     n_ev = int(summary["n_events"].iloc[0])
     panels = [("rmse", "RMSE, all hours (ft)  - lower is better", "%.2f"),
               ("mae_high_water", f"MAE when observed >= {thr:.0f} ft (ft)  - lower is better", "%.2f"),
               ("mae_rising", "MAE while rising >= 1 ft (ft)  - lower is better", "%.2f"),
               ("csi", f"Hourly alarm skill at {thr:.0f} ft (CSI)  - higher is better", "%.2f"),
               ("events_warned_early", f"Events warned before onset (of {n_ev})  - higher is better", "%d"),
-              ("median_lead_h", "Median warning lead time (h)  - higher is better", "%.0f")]
-    fig, axes = plt.subplots(2, 3, figsize=(17, 8.8), constrained_layout=True)
+              ("median_lead_h", "Median warning lead time (h)  - higher is better", "%.0f"),
+              ("violations_pct", f"Forecasts that FALL when upstream is {models.PERTURB_FT} ft higher (%)"
+                                 "  - lower is better", "%.1f")]
+    fig, axes = plt.subplots(2, 4, figsize=(22, 8.8), constrained_layout=True)
     x, w = np.arange(len(horizons)), 0.26
     for ax, (col, text, fmt) in zip(axes.flat, panels):
         for i, n in enumerate(NAMES):
@@ -155,10 +159,12 @@ def fig_accuracy(summary, horizons, thr):
         ax.set_title(text, fontsize=10.5)
         ax.grid(axis="x", visible=False)
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="outside lower center", ncol=len(labels), fontsize=9)
+    axes[1, 3].axis("off")
+    axes[1, 3].legend(handles, labels, loc="center", fontsize=11, title="Model", title_fontsize=11)
     title(fig, f"Model accuracy, leave-one-water-year-out over 2016-2027 ({n_ev} flood events >= {thr:.0f} ft)",
           "Every hour is predicted by a model that never saw its water year. Persistence = 'the level "
-          "stays as it is now'; it can never warn before a flood starts.")
+          "stays as it is now'; it can never warn before a flood starts. Physical-consistency test: "
+          "all upstream gauges raised at the issue time.")
     save(fig, "fig1_accuracy.png")
 
 
@@ -168,7 +174,7 @@ def fig_april_2024(f, preds, horizons, thr, start="2024-03-31", end="2024-04-18"
     lo, hi = pd.Timestamp(start, tz="UTC"), pd.Timestamp(end, tz="UTC")
     truth = f["point"][lo:hi]
     fig, axes = plt.subplots(3, 1, figsize=(13, 10), sharex=True, constrained_layout=True)
-    style = {"persistence": dict(ls="--", lw=1.5), "gbm_A": dict(lw=1.9), "gbm_AE": dict(lw=1.5)}
+    style = {"persistence": dict(ls="--", lw=1.5), "gbm_A": dict(lw=1.9), "gbm_AR_mono": dict(lw=1.6)}
     for ax, h in zip(axes, horizons):
         ax.plot(truth.index, truth.values, color=INK, lw=2.2, label="Observed")
         for n in NAMES:
@@ -185,13 +191,38 @@ def fig_april_2024(f, preds, horizons, thr, start="2024-03-31", end="2024-04-18"
     save(fig, "fig2_april_2024.png")
 
 
+def consistency(f, name, horizons) -> dict[int, float]:
+    """% of held-out hours whose forecast falls by > 0.01 ft when every upstream gauge is
+    raised by models.PERTURB_FT ft (persistence ignores upstream, so it never falls)."""
+    if name == models.REFERENCE:
+        return {h: 0.0 for h in horizons}
+    pred, pert = models.load(name, horizons), models.load(name, horizons, kind="pert")
+    out = {}
+    for h in horizons:
+        d = (pert[h] - pred[h]).dropna()
+        out[h] = 100 * float((d < -0.01).mean())
+    return out
+
+
 def main() -> None:
     f, meta = load_features()
     horizons, thr = meta["horizons"], meta["flood_ft"]
     preds = {n: models.load(n, horizons) for n in NAMES}
     summary = pd.concat([evaluate(f, preds[n], thr, n) for n in NAMES], ignore_index=True)
+    summary["violations_pct"] = [consistency(f, m, horizons)[h] for m, h in zip(summary.model, summary.horizon_h)]
+    print(summary[["model", "horizon_h", "rmse", "mae_high_water", "mae_rising", "precision", "recall_pod",
+                   "csi", "events_warned_early", "median_lead_h", "violations_pct"]].round(3).to_string(index=False))
     fig_accuracy(summary, horizons, thr)
     fig_april_2024(f, preds, horizons, thr)
+
+    # routing model fitted on all years, for interpreting gbm_AR_mono's physics input
+    levels = load_hourly(CLEAN_HOURLY)[list(ROUTED_GAUGES)].reindex(f.index)
+    designs = {h: routing_design(levels, h) for h in horizons}
+    rm = RoutingModel().fit(designs, f["point"], {h: f[f"y_{h}h"] for h in horizons},
+                            f["point"].notna().to_numpy())
+    print("\nrouting kernels (all years):")
+    print(rm.summary().round(2).to_string(index=False))
+    print(f"pool level the Point drains toward: {rm.pool_level(horizons[0]):.2f} ft")
 
 
 if __name__ == "__main__":

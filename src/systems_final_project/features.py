@@ -7,7 +7,6 @@ Feature groups (listed in feature_groups.json):
   point      Point's own level now, 6 h and 24 h ago, recent change, 24 h max
   upstream   Natrona, Kittanning, Sutersville: level now / 6 h / 12 h ago + changes;
              Braddock: changes only (Dam 3 removal shifted its level, Jul 2024)
-  elizabeth  Elizabeth changes only (used by gbm_AE only; offline since Jun 2026)
   rain_obs   observed rain totals over the past 6/24/48/72 h, per location + basin mean
   season     day-of-year sin/cos
   flags      post_dam3, short-gap fill flags
@@ -41,8 +40,8 @@ FLOOD_FT = 18.0  # NWS action stage for the Ohio River at Pittsburgh
 RAIN_LOCS = ("pittsburgh", "kittanning", "elizabeth", "sutersville")
 RAIN_WINDOWS = (6, 24, 48, 72)
 LEVEL_GAUGES = ("natrona", "kittanning", "sutersville")  # stable datum: use levels
-DELTA_GAUGES = ("braddock", "elizabeth")                 # Dam 3 shifted datum: changes only
-GROUPS = ("point", "upstream", "elizabeth", "rain_obs", "season", "flags")
+DELTA_GAUGES = ("braddock",)                             # Dam 3 shifted datum: changes only
+GROUPS = ("point", "upstream", "rain_obs", "season", "flags")
 
 
 def load_features(features_dir: Path = FEATURES_DIR) -> tuple[pd.DataFrame, dict]:
@@ -93,10 +92,9 @@ def build(df: pd.DataFrame, flood_ft: float) -> tuple[pd.DataFrame, dict]:
         add("upstream", f"{g}_d6", s - s.shift(6))
     for g in DELTA_GAUGES:
         s = df[g]
-        grp = "elizabeth" if g == "elizabeth" else "upstream"
-        add(grp, f"{g}_d1", s - s.shift(1))
-        add(grp, f"{g}_d6", s - s.shift(6))
-        add(grp, f"{g}_d12", s - s.shift(12))
+        add("upstream", f"{g}_d1", s - s.shift(1))
+        add("upstream", f"{g}_d6", s - s.shift(6))
+        add("upstream", f"{g}_d12", s - s.shift(12))
 
     # --- observed rain (past only) ----------------------------------------------
     for loc in (*RAIN_LOCS, "basin_mean"):
