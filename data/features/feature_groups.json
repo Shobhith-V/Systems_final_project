@@ -1,0 +1,87 @@
+{
+  "flood_ft": 18.0,
+  "horizons": [
+    6,
+    12,
+    24
+  ],
+  "feature_groups": {
+    "point": [
+      "point",
+      "point_lag6",
+      "point_lag24",
+      "point_d1",
+      "point_d6",
+      "point_max24"
+    ],
+    "upstream": [
+      "natrona",
+      "natrona_lag6",
+      "natrona_lag12",
+      "natrona_d1",
+      "natrona_d6",
+      "kittanning",
+      "kittanning_lag6",
+      "kittanning_lag12",
+      "kittanning_d1",
+      "kittanning_d6",
+      "sutersville",
+      "sutersville_lag6",
+      "sutersville_lag12",
+      "sutersville_d1",
+      "sutersville_d6",
+      "braddock_d1",
+      "braddock_d6",
+      "braddock_d12"
+    ],
+    "upstream_eliz": [
+      "elizabeth_d1",
+      "elizabeth_d6",
+      "elizabeth_d12"
+    ],
+    "rain_obs": [
+      "rain_pittsburgh_past6h",
+      "rain_pittsburgh_past24h",
+      "rain_pittsburgh_past48h",
+      "rain_pittsburgh_past72h",
+      "rain_kittanning_past6h",
+      "rain_kittanning_past24h",
+      "rain_kittanning_past48h",
+      "rain_kittanning_past72h",
+      "rain_elizabeth_past6h",
+      "rain_elizabeth_past24h",
+      "rain_elizabeth_past48h",
+      "rain_elizabeth_past72h",
+      "rain_sutersville_past6h",
+      "rain_sutersville_past24h",
+      "rain_sutersville_past48h",
+      "rain_sutersville_past72h",
+      "rain_basin_mean_past6h",
+      "rain_basin_mean_past24h",
+      "rain_basin_mean_past48h",
+      "rain_basin_mean_past72h"
+    ],
+    "season": [
+      "doy_sin",
+      "doy_cos"
+    ],
+    "flags": [
+      "point_filled",
+      "braddock_filled",
+      "natrona_filled",
+      "kittanning_filled",
+      "sutersville_filled"
+    ],
+    "info": [
+      "post_dam3"
+    ]
+  },
+  "targets": [
+    "y_6h",
+    "dy_6h",
+    "y_12h",
+    "dy_12h",
+    "y_24h",
+    "dy_24h"
+  ]
+}
