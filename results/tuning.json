@@ -1,0 +1,23 @@
+{
+  "validation_year": 2018,
+  "metric": "MAE on hours observed >= 18.0 ft (ties: RMSE)",
+  "gbm": {
+    "max_iter": 200,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 80
+  },
+  "trend": {
+    "6": {
+      "window_h": 3,
+      "damp": 1.0
+    },
+    "12": {
+      "window_h": 3,
+      "damp": 0.5
+    },
+    "24": {
+      "window_h": 3,
+      "damp": 0.25
+    }
+  }
+}
