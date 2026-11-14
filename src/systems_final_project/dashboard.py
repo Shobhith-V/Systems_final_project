@@ -1,13 +1,7 @@
-"""Streamlit dashboard: how well the forecasts do, replays of past events, and failures.
+import sys
+from pathlib import Path
 
-Reads only files the pipeline writes (it never trains anything):
-  data/features/features.parquet, data/clean/hourly.parquet, results/predictions/*,
-  results/summary.csv, events.csv, false_alarms.csv, worst_errors.csv, tuning.json
-
-Run (from the repository root, after the pipeline):
-    uv run streamlit run src/systems_final_project/dashboard.py
-"""
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   
 import json
 
 import numpy as np
