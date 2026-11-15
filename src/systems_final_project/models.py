@@ -4,6 +4,9 @@ Main models (scored in fig 1):
   persistence        baseline: level at t+h = level now (no training)
   persistence_trend  rule baseline: level now + damp * (recent rate of change) * h, with the
                      window and damping chosen per horizon on the validation year (tune.py)
+  linear             linear regression on the same inputs as gbm_A. Missing inputs are filled
+                     with the median of that fold's training rows (plus a "was missing" column
+                     per input), so it predicts every hour and is scored on the same hours
   gbm_A              GBM on Point history + upstream gauges + observed rain + season + gap flags
   gbm_AR_mono        physics-informed gbm_A:
                        - the fitted routing model's forecast (physics.py) as one more input
@@ -47,6 +50,10 @@ import time
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from systems_final_project.data.config import CLEAN_HOURLY, FEATURES_DIR, RESULTS_DIR, PREDICTIONS_DIR as OUT
 from systems_final_project.features import load_features, load_hourly
@@ -54,14 +61,15 @@ from systems_final_project.physics import ROUTED_GAUGES, RoutingModel, routing_d
 
 # ------------------------------------------------------------------------------ models
 INPUTS = ("point", "upstream", "rain_obs", "season", "flags")   # feature groups, in column order
-MODEL_INPUTS = {                                                 # GBM -> its feature groups
+MODEL_INPUTS = {                                                 # trained model -> its feature groups
+    "linear": INPUTS,
     "gbm_A": INPUTS,
     "gbm_AR_mono": INPUTS,                       # + routing forecast "phys", monotonic constraints
     "gbm_A_eliz": INPUTS + ("upstream_eliz",),   # ablation: does Elizabeth add anything?
 }
 REFERENCE = "persistence"
 TREND = "persistence_trend"
-MAIN = (REFERENCE, TREND, "gbm_A", "gbm_AR_mono")
+MAIN = (REFERENCE, TREND, "linear", "gbm_A", "gbm_AR_mono")
 ABLATIONS = ("gbm_A_eliz",)
 ALL_MODELS = MAIN + ABLATIONS
 
@@ -116,6 +124,18 @@ def trend_forecast(point: pd.Series, h: int, window_h: int, damp: float) -> pd.S
     Falls back to persistence when the reading window_h hours ago is missing."""
     rate = (point - point.shift(window_h)) / window_h
     return point + damp * rate.fillna(0.0) * h
+
+
+def make_estimator(name: str, gbm_settings: dict):
+    """An untrained model. Everything it learns (including the fill-in medians and the
+    scaling of the linear model) comes from the training rows of one fold only."""
+    if name == "linear":
+        return make_pipeline(
+            SimpleImputer(strategy="median", add_indicator=True),   # missing input -> training median
+            StandardScaler(),                                       # same scale for every input
+            LinearRegression(),
+        )
+    return HistGradientBoostingRegressor(**gbm_settings)          # handles missing inputs itself
 
 
 def features_for(meta: dict, name: str = "gbm_A") -> list[str]:
@@ -209,7 +229,7 @@ def run(f: pd.DataFrame, meta: dict, name: str, split: str = SPLIT) -> dict[str,
     for h in H:
         def fit_predict(train, test, target, wy):
             X = f[feats].assign(phys=routing[wy][1][h]) if physics else f[feats]
-            m = HistGradientBoostingRegressor(**params).fit(X[train], f.loc[train, target])
+            m = make_estimator(name, params).fit(X[train], f.loc[train, target])
             Xt = X[test]
             Xp = perturb_upstream(Xt, PERTURB_FT)
             if physics:

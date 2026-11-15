@@ -127,9 +127,10 @@ def write_failures(f, preds, names, thr, years, split, horizons) -> None:
 NAMES = list(models.MAIN)                       # fig 1 and fig 2
 ABLATION_SETS = {"elizabeth": ["gbm_A", "gbm_A_eliz"]}   # fig 3: each compared with gbm_A
 LABEL = {"persistence": "Persistence (baseline)", "persistence_trend": "Persistence + trend (rule)",
+         "linear": "Linear regression",
          "gbm_A": "GBM A", "gbm_AR_mono": "GBM AR_mono (physics-informed)",
          "gbm_A_eliz": "GBM A + Elizabeth"}
-COLOR = {"persistence": "#a3a29c", "persistence_trend": "#6b6a64", "gbm_A": "#2a78d6",
+COLOR = {"persistence": "#a3a29c", "persistence_trend": "#6b6a64", "linear": "#2e9d6f", "gbm_A": "#2a78d6",
          "gbm_AR_mono": "#eb6834", "gbm_A_eliz": "#7fb0e8"}
 INK, INK2, MUTED = "#0b0b0b", "#52514e", "#8a8984"
 
@@ -212,7 +213,7 @@ def fig_april_2024(f, preds, horizons, thr, start="2024-03-31", end="2024-04-18"
     truth = f["point"][lo:hi]
     fig, axes = plt.subplots(3, 1, figsize=(13, 10), sharex=True, constrained_layout=True)
     style = {"persistence": dict(ls="--", lw=1.5), "persistence_trend": dict(ls="-.", lw=1.3),
-             "gbm_A": dict(lw=1.9), "gbm_AR_mono": dict(lw=1.6)}
+             "linear": dict(lw=1.4), "gbm_A": dict(lw=1.9), "gbm_AR_mono": dict(lw=1.6)}
     for ax, h in zip(axes, horizons):
         ax.plot(truth.index, truth.values, color=INK, lw=2.2, label="Observed")
         for n in NAMES:

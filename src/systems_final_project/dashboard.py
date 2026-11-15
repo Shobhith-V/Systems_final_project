@@ -1,7 +1,13 @@
-import sys
-from pathlib import Path
+"""Streamlit dashboard: how well the forecasts do, replays of past events, and failures.
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   
+Reads only files the pipeline writes (it never trains anything):
+  data/features/features.parquet, data/clean/hourly.parquet, results/predictions/*,
+  results/summary.csv, events.csv, false_alarms.csv, worst_errors.csv, tuning.json
+
+Run (from the repository root, after the pipeline):
+    uv run streamlit run src/systems_final_project/dashboard.py
+"""
+
 import json
 
 import numpy as np
@@ -178,6 +184,7 @@ def tab_performance(t, names, split, years, thr):
     table = (s[s.model.isin(main)].assign(model=lambda d: d.model.map(LABEL))
              .pivot(index="model", columns="horizon_h", values=list(METRICS)))
     table.columns = [f"{METRICS[m][0]} · {h} h" for m, h in table.columns]
+    table = table.reindex([LABEL[n] for n in main])          # same order as the chart
     st.dataframe(table.round(2), use_container_width=True)
 
     abl = [n for n in models.ABLATIONS if n in names]
